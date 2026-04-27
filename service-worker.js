@@ -1,121 +1,48 @@
 const CACHE_NAME = 'crechenow-v1';
-// ⚠️ IMPORTANTE: coloque o nome REAL do seu repositório aqui
-const BASE = '/NOME-DO-REPO/';
-
-// Arquivos do app (corrigidos para GitHub Pages)
 const STATIC_ASSETS = [
-  BASE,
-  BASE + 'index.html',
-  BASE + 'dashboard-parent.html',
-  BASE + 'dashboard-staff.html',
-
-  BASE + 'assets/css/main.css',
-  BASE + 'assets/css/components.css',
-
-  BASE + 'assets/js/app.js',
-  BASE + 'assets/js/auth.js',
-  BASE + 'assets/js/notifications.js',
-  BASE + 'assets/js/storage.js',
-
+  '/', '/index.html', '/dashboard-parent.html', '/dashboard-staff.html',
+  '/assets/css/main.css', '/assets/css/components.css',
+  '/assets/js/app.js', '/assets/js/auth.js', '/assets/js/notifications.js', '/assets/js/storage.js',
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css',
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js'
 ];
 
-// INSTALL → cache seguro (não quebra se 1 falhar)
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      for (const file of STATIC_ASSETS) {
-        try {
-          await cache.add(file);
-        } catch (err) {
-          console.warn('[SW] Falha ao cachear:', file);
-        }
-      }
-    })
+// Instalação: Precache app shell
+self.addEventListener('install', (e) => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
-  self.skipWaiting();
 });
 
-// ACTIVATE → limpa caches antigos
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      )
-    )
+// Ativação: Limpa caches antigos
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then((keys) => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
   );
-  self.clients.claim();
 });
 
-// FETCH → estratégia híbrida (offline-first inteligente)
-self.addEventListener('fetch', (event) => {
-  const url = event.request.url;
-
-  // Ignora extensões externas não críticas
-  if (!url.startsWith(self.location.origin) &&
-      !url.includes('cdn.jsdelivr.net')) {
-    return;
-  }
-
-  // API → network first
-  if (url.includes('/api/') || url.includes('/data/')) {
-    event.respondWith(
-      fetch(event.request).catch(() =>
-        caches.match(BASE + 'offline.html')
-      )
+// Fetch: Cache-first para estáticos, Network-first para dados, fallback offline
+self.addEventListener('fetch', (e) => {
+  if (e.request.url.includes('/api/') || e.request.url.includes('/data/')) {
+    e.respondWith(
+      fetch(e.request)
+        .catch(() => caches.match('/offline.html'))
     );
-    return;
+  } else {
+    e.respondWith(
+      caches.match(e.request).then((res) => res || fetch(e.request))
+    );
   }
+});
 
-  // Static assets → cache first
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, clone);
-        });
-        return response;
-      }).catch(() => {
-        // fallback simples
-        if (event.request.mode === 'navigate') {
-          return caches.match(BASE + 'index.html');
-        }
-      });
-    })
+// Push notifications (simulado para MVP)
+self.addEventListener('push', (e) => {
+  const data = e.data.json();
+  e.waitUntil(
+    self.registration.showNotification(data.title, { body: data.body, icon: '/assets/img/icons/icon-192x192.png' })
   );
 });
 
-// PUSH NOTIFICATION
-self.addEventListener('push', (event) => {
-  let data = {};
-
-  try {
-    data = event.data ? event.data.json() : {};
-  } catch (e) {
-    data = { title: 'Notificação', body: 'Nova atualização' };
-  }
-
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'Aviso', {
-      body: data.body || '',
-      icon: BASE + 'assets/img/icons/icon-192x192.png'
-    })
-  );
-});
-
-// CLICK NOTIFICATION
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-
-  event.waitUntil(
-    clients.openWindow(BASE + 'dashboard-parent.html')
-  );
-});
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
   e.waitUntil(clients.openWindow('/dashboard-parent.html'));

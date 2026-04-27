@@ -74,12 +74,31 @@ document.addEventListener('DOMContentLoaded', () => {
     deferredPrompt = e;
     if (!document.getElementById('installBtn')) {
       const btn = document.createElement('button');
-      btn.id = 'installBtn'; btn.className = 'btn btn-outline-primary btn-sm fixed-bottom m-3';
-      btn.textContent = '📲 Instalar CrecheNow';
-      btn.addEventListener('click', () => {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((res) => { if (res.outcome === 'accepted') btn.remove(); deferredPrompt = null; });
+btn.id = 'installBtn';
+    btn.textContent = '📲 Instalar Creche';
+    btn.className = 'btn btn-sm';
+    Object.assign(btn.style, {
+      position: 'fixed',
+      bottom: '20px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      width: 'auto',
+      padding: '10px 16px',
+      borderRadius: '20px',
+      backgroundColor: '#ff9800',
+      color: '#fff',
+      border: 'none',
+      boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+      zIndex: '9999',
+      cursor: 'pointer'
+    });
+    btn.addEventListener('click', () => {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((res) => {
+        if (res.outcome === 'accepted') btn.remove();
+        deferredPrompt = null;
       });
+    });
       document.body.appendChild(btn);
     }
   });
